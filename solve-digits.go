@@ -10,6 +10,7 @@ import (
 type Solution struct {
 	sol  []string
 	nums []int
+	ops  map[string]struct{}
 }
 
 type PartSol struct {
@@ -40,9 +41,10 @@ func find_solution(target int, sol Solution) {
 				if j <= i {
 					continue
 				}
-				sols := make([]PartSol, 3, 4)
-				sols[0].sum = fmt.Sprintf("%d+%d=%d", n1, n2, n1+n2)
-				sols[0].answ = n1 + n2
+				sols := make([]PartSol, 0)
+				if _, canadd := sol.ops["+"]; canadd {
+					sols = append(sols, PartSol{sum: fmt.Sprintf("%d+%d=%d", n1, n2, n1+n2), answ: n1 + n2})
+				}
 				var lrg, sml int
 				if n1 > n2 {
 					lrg = n1
@@ -51,12 +53,14 @@ func find_solution(target int, sol Solution) {
 					lrg = n2
 					sml = n1
 				}
-				sols[1].sum = fmt.Sprintf("%d-%d=%d", lrg, sml, lrg-sml)
-				sols[1].answ = lrg - sml
-				sols[2].sum = fmt.Sprintf("%d*%d=%d", n1, n2, n1*n2)
-				sols[2].answ = n1 * n2
-				if sml > 0 && lrg%sml == 0 {
-					sols = append(sols, PartSol{fmt.Sprintf("%d/%d=%d", lrg, sml, lrg/sml), lrg / sml})
+				if _, cansub := sol.ops["-"]; cansub {
+					sols = append(sols, PartSol{sum: fmt.Sprintf("%d-%d=%d", lrg, sml, lrg-sml), answ: lrg - sml})
+				}
+				if _, canmult := sol.ops["*"]; canmult {
+					sols = append(sols, PartSol{sum: fmt.Sprintf("%d*%d=%d", n1, n2, n1*n2), answ: n1 * n2})
+				}
+				if _, candiv := sol.ops["/"]; candiv && sml > 0 && lrg%sml == 0 {
+					sols = append(sols, PartSol{sum: fmt.Sprintf("%d/%d=%d", lrg, sml, lrg/sml), answ: lrg / sml})
 				}
 				for _, psol := range sols {
 					var soladd Solution
@@ -80,6 +84,12 @@ func find_solution(target int, sol Solution) {
 }
 
 func main() {
+	validops := map[string]struct{}{
+		"+": struct{}{},
+		"*": struct{}{},
+		"-": struct{}{},
+		"/": struct{}{},
+	}
 	if len(os.Args) < 3 {
 		panic("Provide target and input numbers")
 	}
@@ -87,9 +97,11 @@ func main() {
 	if err != nil {
 		panic(fmt.Sprintf("Target should be integer: %s", err))
 	}
-	var sol Solution
+	sol := Solution{ops: make(map[string]struct{})}
 	for _, argstr := range os.Args[2:] {
-		if arg, err := strconv.Atoi(argstr); err != nil {
+		if _, isop := validops[argstr]; isop {
+			sol.ops[argstr] = struct{}{}
+		} else if arg, err := strconv.Atoi(argstr); err != nil {
 			panic(fmt.Sprintf("Digits should be integers: %s", err))
 		} else {
 			if arg == target {
@@ -97,6 +109,9 @@ func main() {
 			}
 			sol.nums = append(sol.nums, arg)
 		}
+	}
+	if len(sol.ops) == 0 {
+		sol.ops = validops
 	}
 	find_solution(target, sol)
 }
